@@ -1,11 +1,12 @@
-Designed and implemented an end-to-end CI/CD pipeline for a Java banking application using Jenkins, Docker and Kubernetes.
-Automated the application build process using Maven to generate deployable WAR artifacts.
-Built Docker images for the application and pushed them to DockerHub container registry.
-Provisioned infrastructure using Terraform and configured servers using Ansible for DevOps tooling setup.
-Deployed application containers to a Kubernetes cluster consisting of one master and multiple worker nodes.
-Integrated Jenkins with Kubernetes using the Publish over SSH plugin to automate deployment with kubectl manifests.
-Implemented infrastructure and application monitoring using Prometheus and Grafana deployed through Helm charts.
-Configured email notifications for pipeline status and cluster alerts to improve operational visibility.
+Implemented a DevSecOps CI/CD pipeline for a containerized Zomato clone application using Jenkins and Docker.
+Automated the application build and deployment workflow using Jenkins pipeline stages.
+Integrated SonarQube for static code analysis and quality gate validation in the CI pipeline.
+Performed container vulnerability scanning using Trivy to identify security issues in Docker images.
+Implemented Docker Scout for container image analysis and security insights.
+Built Docker images and pushed them to DockerHub container registry for versioned deployments.
+Deployed the application as Docker containers on an Ubuntu-based EC2 instance.
+Configured Jenkins email notifications to alert build status and pipeline results.
+Managed CI/CD tools installation and configuration on the Ubuntu server including Jenkins, Docker, AWS CLI and security scanning tools.
 
 
 After successfully deploying
