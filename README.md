@@ -1,35 +1,48 @@
-# 🚀 CI/CD DevOps Pipeline Setup (Jenkins + Docker + SonarQube + Trivy)
+# 🚀 DevOps CI/CD Pipeline with Monitoring (Jenkins + Docker + SonarQube + Trivy + Prometheus + Grafana using Helm)
 
-This project demonstrates a **complete DevOps CI/CD pipeline setup** on an Ubuntu EC2 instance using **Jenkins, Docker, SonarQube, Trivy, and Docker Scout**.
+This project demonstrates a **complete production-style DevOps pipeline** deployed on an AWS EC2 Ubuntu instance.
 
-The pipeline automates:
+The setup includes:
 
-* Code build
-* Static code analysis
-* Security scanning
-* Docker image creation
-* Image push to DockerHub
-* Deployment using Docker containers
-* Email notifications for build status
+* CI/CD automation using Jenkins
+* Containerization using Docker
+* Code quality analysis using SonarQube
+* Security scanning using Trivy
+* Docker image scanning using Docker Scout
+* Container registry using DockerHub
+* Monitoring using Prometheus and Grafana deployed with Helm
 
----
-
-# 🏗 Architecture
-
-Developer → GitHub Repository → Jenkins Pipeline → SonarQube Analysis → Trivy Security Scan → Docker Build → DockerHub Push → Container Deployment
+This project simulates a **real-world DevOps environment** where code goes through build, scan, containerization, deployment, and monitoring.
 
 ---
 
-# ☁️ Infrastructure Setup
+# 🏗 Project Architecture
 
-Launch an EC2 instance with the following configuration:
+Developer → GitHub Repository → Jenkins Pipeline → SonarQube Code Analysis → Trivy Security Scan → Docker Image Build → DockerHub Push → Container Deployment → Prometheus Metrics Collection → Grafana Visualization
 
-| Parameter     | Value          |
-| ------------- | -------------- |
-| OS            | Ubuntu 24.04   |
-| Instance Type | t2.large       |
-| Storage       | 30 GB          |
-| Ports         | 22, 8080, 9000 |
+---
+
+# ☁️ Infrastructure
+
+| Component      | Configuration |
+| -------------- | ------------- |
+| Cloud Provider | AWS           |
+| Instance       | EC2           |
+| OS             | Ubuntu 24.04  |
+| Instance Type  | t2.large      |
+| Storage        | 30 GB         |
+
+---
+
+# 🔓 Required Ports
+
+| Port | Service    |
+| ---- | ---------- |
+| 22   | SSH        |
+| 8080 | Jenkins    |
+| 9000 | SonarQube  |
+| 3000 | Grafana    |
+| 9090 | Prometheus |
 
 ---
 
@@ -45,7 +58,7 @@ Switch to root user
 sudo su
 ```
 
-Update packages
+Update system
 
 ```bash
 apt update -y
@@ -75,6 +88,8 @@ aws --version
 
 # 3️⃣ Install Jenkins
 
+Install Java (required for Jenkins)
+
 ```bash
 apt update -y
 
@@ -85,8 +100,6 @@ echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.n
 apt update -y
 
 apt install temurin-17-jdk -y
-
-java --version
 ```
 
 Install Jenkins
@@ -105,38 +118,25 @@ Start Jenkins
 
 ```bash
 systemctl start jenkins
+systemctl enable jenkins
 systemctl status jenkins
 ```
 
-Verify
-
-```bash
-jenkins --version
-```
-
----
-
-# 4️⃣ Access Jenkins
-
-Open port **8080** in EC2 Security Group.
-
-Access Jenkins in browser:
+Access Jenkins
 
 ```
 http://<EC2-PUBLIC-IP>:8080
 ```
 
-Get initial admin password:
+Get initial password
 
 ```bash
 cat /var/lib/jenkins/secrets/initialAdminPassword
 ```
 
-Complete Jenkins setup wizard.
-
 ---
 
-# 5️⃣ Install Docker
+# 4️⃣ Install Docker
 
 ```bash
 apt-get update
@@ -167,7 +167,7 @@ apt-get update
 apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 ```
 
-Add user to Docker group
+Add Docker permissions
 
 ```bash
 usermod -aG docker ubuntu
@@ -177,7 +177,7 @@ chmod 777 /var/run/docker.sock
 newgrp docker
 ```
 
-Verify
+Verify installation
 
 ```bash
 docker --version
@@ -185,7 +185,7 @@ docker --version
 
 ---
 
-# 6️⃣ Install Trivy (Container Security Scanner)
+# 5️⃣ Install Trivy (Security Scanner)
 
 ```bash
 apt-get install wget apt-transport-https gnupg -y
@@ -207,9 +207,7 @@ trivy --version
 
 ---
 
-# 7️⃣ Install SonarQube Using Docker
-
-Run SonarQube container
+# 6️⃣ Install SonarQube Using Docker
 
 ```bash
 docker run -d --name sonar -p 9000:9000 sonarqube:lts-community
@@ -227,140 +225,194 @@ Access SonarQube
 http://<EC2-PUBLIC-IP>:9000
 ```
 
-Default credentials
+Default login
 
 ```
 username: admin
 password: admin
 ```
 
+Generate **SonarQube Token** for Jenkins integration.
+
 ---
 
-# 8️⃣ Jenkins Plugin Installation
+# 7️⃣ Install Kubernetes (for Monitoring Stack)
 
-Install the following plugins from **Manage Jenkins → Plugins**
+```bash
+curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
 
+chmod +x kubectl
+
+mv kubectl /usr/local/bin/
+```
+
+Install Minikube
+
+```bash
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+
+install minikube-linux-amd64 /usr/local/bin/minikube
+```
+
+Start Kubernetes cluster
+
+```bash
+minikube start
+```
+
+---
+
+# 8️⃣ Install Helm
+
+```bash
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+Verify
+
+```bash
+helm version
+```
+
+---
+
+# 9️⃣ Deploy Prometheus & Grafana using Helm
+
+Add Helm repository
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
+helm repo update
+```
+
+Install monitoring stack
+
+```bash
+helm install monitoring prometheus-community/kube-prometheus-stack
+```
+
+Check pods
+
+```bash
+kubectl get pods
+```
+
+---
+
+# 🔟 Access Grafana
+
+Forward Grafana port
+
+```bash
+kubectl port-forward svc/monitoring-grafana 3000:80
+```
+
+Open browser
+
+```
+http://localhost:3000
+```
+
+Get Grafana password
+
+```bash
+kubectl get secret monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 --decode
+```
+
+---
+
+# 1️⃣1️⃣ Jenkins Plugins
+
+Install plugins:
+
+* Git
 * Docker
 * Docker Pipeline
 * SonarQube Scanner
-* Pipeline
-* Git
 * Email Extension
+* Pipeline
 * Credentials Binding
-* OWASP Dependency Check
 
 ---
 
-# 9️⃣ Configure SonarQube in Jenkins
+# 1️⃣2️⃣ Configure Jenkins
 
-Go to:
+Configure:
+
+* SonarQube Server
+* DockerHub Credentials
+* Email Notification
+* SonarQube Token
+
+Location:
 
 ```
 Manage Jenkins → Configure System
 ```
 
-Add SonarQube server.
+---
 
-Then configure tools:
+# 1️⃣3️⃣ Jenkins Pipeline Stages
 
-```
-Manage Jenkins → Global Tool Configuration
-```
+Pipeline performs:
 
-Add:
-
-* SonarQube Scanner
+1️⃣ Code Checkout from GitHub
+2️⃣ Build Application
+3️⃣ SonarQube Code Analysis
+4️⃣ Trivy Security Scan
+5️⃣ Docker Image Build
+6️⃣ Push Image to DockerHub
+7️⃣ Deploy Docker Container
+8️⃣ Email Notification
+9️⃣ Monitoring using Prometheus & Grafana
 
 ---
 
-# 🔑 Credentials Setup
+# 📊 Monitoring Stack (Helm Deployment)
 
-Add credentials in Jenkins:
+Prometheus collects metrics from:
 
-1️⃣ SonarQube Token
-2️⃣ DockerHub Username & Password
-3️⃣ Email SMTP credentials
+* Node Exporter
+* Kubernetes Cluster
+* Docker containers
 
-Location:
+Grafana visualizes metrics using dashboards such as:
 
-```
-Manage Jenkins → Manage Credentials
-```
-
----
-
-# 📧 Email Notification Setup
-
-Configure SMTP settings in Jenkins so that **build notifications are sent via email** after each pipeline execution.
+* Node Exporter Full Dashboard
+* Kubernetes Cluster Monitoring
+* Container Resource Usage
 
 ---
 
-# 🔗 SonarQube Webhook
+# 🛠 Tools Used
 
-Create webhook in SonarQube:
-
-```
-Administration → Webhooks
-```
-
-Add Jenkins webhook URL.
-
----
-
-# ⚙️ Jenkins Pipeline
-
-Create a **Pipeline Job** in Jenkins and configure the Jenkinsfile.
-
-Pipeline stages include:
-
-* Checkout code
-* Build application
-* SonarQube code analysis
-* Trivy vulnerability scan
-* Docker image build
-* Push image to DockerHub
-* Deploy container
-* Send email notification
-
----
-
-# 🐳 DockerHub Integration
-
-In pipeline configuration, replace:
-
-```
-<your-dockerhub-username>
-```
-
-With your DockerHub username in these stages:
-
-* Tag and Push to DockerHub
-* DockerScoutImage
-* Deploy to Container
-
----
-
-# 📌 Tools Used
-
-| Tool         | Purpose                      |
-| ------------ | ---------------------------- |
-| Jenkins      | CI/CD automation             |
-| Docker       | Containerization             |
-| SonarQube    | Code quality analysis        |
-| Trivy        | Security scanning            |
-| Docker Scout | Image vulnerability scanning |
-| AWS EC2      | Infrastructure               |
+| Tool       | Purpose                    |
+| ---------- | -------------------------- |
+| AWS EC2    | Infrastructure             |
+| Jenkins    | CI/CD                      |
+| Docker     | Containerization           |
+| SonarQube  | Code Quality               |
+| Trivy      | Security Scanning          |
+| DockerHub  | Container Registry         |
+| Kubernetes | Container Orchestration    |
+| Helm       | Kubernetes Package Manager |
+| Prometheus | Metrics Collection         |
+| Grafana    | Monitoring Dashboard       |
 
 ---
 
 # 🎯 Outcome
 
-This project demonstrates a **production-style DevOps pipeline** that integrates:
+This project demonstrates a **complete DevOps pipeline with integrated monitoring**:
 
-* Continuous Integration
-* Continuous Security Scanning
-* Containerization
-* Automated Deployment
+✔ Automated CI/CD pipeline
+✔ Code quality analysis
+✔ Container security scanning
+✔ Docker image management
+✔ Automated deployment
+✔ Kubernetes monitoring using Helm
+✔ Real-time dashboards with Grafana
 
 ---
 
@@ -372,6 +424,7 @@ Cloud & DevOps Engineer
 Skills: Linux • Docker • Jenkins • Kubernetes • Terraform • AWS • Azure
 
 Email: [neerajverma9264@gmail.com](mailto:neerajverma9264@gmail.com)
+
 
 
 
